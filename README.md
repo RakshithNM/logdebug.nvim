@@ -28,7 +28,6 @@ use {
 ### Configuration(optional)
 
 ```lua
-```
 require("console_log").setup({
   keymap = "<leader>lg" -- default is <leader>cl
 })

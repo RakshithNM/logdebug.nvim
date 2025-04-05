@@ -12,6 +12,7 @@ A tiny Neovim plugin to insert `console.log({ word })` for the word under the cu
     require("logger").setup()
   end
 }
+```
 
 ### Packer
 
@@ -22,9 +23,14 @@ use {
     require("console_log").setup()
   end
 }
+```
 
 ### Configuration(optional)
 
+```lua
+```
 require("console_log").setup({
   keymap = "<leader>lg" -- default is <leader>cl
 })
+```
+```

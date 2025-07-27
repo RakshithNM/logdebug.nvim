@@ -1,9 +1,13 @@
 local M = {}
 
+M.log_levels = { "log", "info", "warn", "error" }
+M.current_level_index = 1
+
 local function insert_log_line(below)
-	local word = vim.fn.expand("<cword>")
-	local line_num = vim.fn.line(".")
-	local log_line = string.format("console.log({ %s });", word)
+        local word = vim.fn.expand("<cword>")
+        local line_num = vim.fn.line(".")
+        local level = M.log_levels[M.current_level_index]
+        local log_line = string.format("console.%s({ %s });", level, word)
 	if below then
 		vim.fn.append(line_num, log_line)
 	else
@@ -23,29 +27,36 @@ function M.remove_all_logs()
 	local bufnr = vim.api.nvim_get_current_buf()
 	for i = vim.api.nvim_buf_line_count(bufnr), 1, -1 do
 		local line = vim.api.nvim_buf_get_lines(bufnr, i - 1, i, false)[1]
-		if line:match("^%s*console%.log%(") then
-			vim.api.nvim_buf_set_lines(bufnr, i - 1, i, false, {})
-		end
+                if line:match("^%s*console%.(log|info|warn|error)%(") then
+                        vim.api.nvim_buf_set_lines(bufnr, i - 1, i, false, {})
+                end
 	end
 end
 
 function M.comment_all_logs()
-	local bufnr = vim.api.nvim_get_current_buf()
-	for i = vim.api.nvim_buf_line_count(bufnr), 1, -1 do
-		local line = vim.api.nvim_buf_get_lines(bufnr, i - 1, i, false)[1]
-		if line:match("^%s*console%.log%(") then
-			local indent = line:match("^%s*") or ""
-			local uncommented = line:sub(#indent + 1)
-			vim.api.nvim_buf_set_lines(bufnr, i - 1, i, false, { indent .. "//" .. uncommented })
-		end
-	end
+        local bufnr = vim.api.nvim_get_current_buf()
+        for i = vim.api.nvim_buf_line_count(bufnr), 1, -1 do
+                local line = vim.api.nvim_buf_get_lines(bufnr, i - 1, i, false)[1]
+                if line:match("^%s*console%.(log|info|warn|error)%(") then
+                        local indent = line:match("^%s*") or ""
+                        local uncommented = line:sub(#indent + 1)
+                        vim.api.nvim_buf_set_lines(bufnr, i - 1, i, false, { indent .. "//" .. uncommented })
+                end
+        end
+end
+
+function M.toggle_verbosity()
+        M.current_level_index = M.current_level_index % #M.log_levels + 1
+        local level = M.log_levels[M.current_level_index]
+        vim.notify("logdebug: using console." .. level)
 end
 function M.setup(opts)
 	opts = opts or {}
 	local keymap_below = opts.keymap_below or "<leader>wl"
 	local keymap_above = opts.keymap_above
-	local keymap_remove = opts.keymap_remove or "<leader>wd"
-	local keymap_comment = opts.keymap_comment or "<leader>wc"
+        local keymap_remove = opts.keymap_remove or "<leader>wd"
+        local keymap_comment = opts.keymap_comment or "<leader>wc"
+        local keymap_toggle = opts.keymap_toggle or "<leader>wv"
 
 	vim.keymap.set("n", keymap_below, M.log_word_below_cursor, { desc = "Console log word below cursor" })
 	if keymap_above then
@@ -54,9 +65,12 @@ function M.setup(opts)
 	if keymap_remove then
 		vim.keymap.set("n", keymap_remove, M.remove_all_logs, { desc = "Remove console logs" })
 	end
-	if keymap_comment then
-		vim.keymap.set("n", keymap_comment, M.comment_all_logs, { desc = "Comment out console logs" })
-	end
+        if keymap_comment then
+                vim.keymap.set("n", keymap_comment, M.comment_all_logs, { desc = "Comment out console logs" })
+        end
+        if keymap_toggle then
+                vim.keymap.set("n", keymap_toggle, M.toggle_verbosity, { desc = "Toggle log level" })
+        end
 end
 
 return M

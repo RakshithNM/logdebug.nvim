@@ -30,10 +30,10 @@ use {
 
 ```lua
 require("logdebug").setup({
-  keymap_below = "<leader>lg", -- default is <leader>wl
-  -- keymap_above = "<leader>lh" -- map to insert above cursor
-  -- keymap_remove = "<leader>ld" -- remove all console logs
-  -- keymap_comment = "<leader>lc" -- comment out all console logs
-  -- keymap_toggle = "<leader>wv" -- toggle log verbosity
+  keymap_below = "<leader>wlb", -- word log below
+  keymap_above = "<leader>wla" -- word log above
+  keymap_remove = "<leader>dl" -- delete all console logs
+  keymap_comment = "<leader>kl" -- Komment out all console logs
+  keymap_toggle = "<leader>tll" -- toggle log level
 })
 ```

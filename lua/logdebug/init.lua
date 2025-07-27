@@ -3,6 +3,15 @@ local M = {}
 M.log_levels = { "log", "info", "warn", "error" }
 M.current_level_index = 1
 
+local function is_console_line(line)
+	for _, level in ipairs(M.log_levels) do
+		if line:match("^%s*console%." .. level .. "%(") then
+			return true
+		end
+	end
+	return false
+end
+
 local function insert_log_line(below)
 	local word = vim.fn.expand("<cword>")
 	local line_num = vim.fn.line(".")
@@ -27,7 +36,7 @@ function M.remove_all_logs()
 	local bufnr = vim.api.nvim_get_current_buf()
 	for i = vim.api.nvim_buf_line_count(bufnr), 1, -1 do
 		local line = vim.api.nvim_buf_get_lines(bufnr, i - 1, i, false)[1]
-		if line:match("^%s*console%.(log|info|warn|error)%(") then
+		if is_console_line(line) then
 			vim.api.nvim_buf_set_lines(bufnr, i - 1, i, false, {})
 		end
 	end
@@ -37,7 +46,7 @@ function M.comment_all_logs()
 	local bufnr = vim.api.nvim_get_current_buf()
 	for i = vim.api.nvim_buf_line_count(bufnr), 1, -1 do
 		local line = vim.api.nvim_buf_get_lines(bufnr, i - 1, i, false)[1]
-		if line:match("^%s*console%.(log|info|warn|error)%(") then
+		if is_console_line(line) then
 			local indent = line:match("^%s*") or ""
 			local uncommented = line:sub(#indent + 1)
 			vim.api.nvim_buf_set_lines(bufnr, i - 1, i, false, { indent .. "//" .. uncommented })
@@ -50,13 +59,14 @@ function M.toggle_verbosity()
 	local level = M.log_levels[M.current_level_index]
 	vim.notify("logdebug: using console." .. level)
 end
+
 function M.setup(opts)
 	opts = opts or {}
-	local keymap_below = opts.keymap_below or "<leader>wl"
-	local keymap_above = opts.keymap_above
-	local keymap_remove = opts.keymap_remove or "<leader>wd"
-	local keymap_comment = opts.keymap_comment or "<leader>wc"
-	local keymap_toggle = opts.keymap_toggle or "<leader>wv"
+	local keymap_below = opts.keymap_below or "<leader>wla"
+	local keymap_above = opts.keymap_above or "<leader>wlb"
+	local keymap_remove = opts.keymap_remove or "<leader>dl"
+	local keymap_comment = opts.keymap_comment or "<leader>kl"
+	local keymap_toggle = opts.keymap_toggle or "<leader>tll"
 
 	vim.keymap.set("n", keymap_below, M.log_word_below_cursor, { desc = "Console log word below cursor" })
 	if keymap_above then

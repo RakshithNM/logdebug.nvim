@@ -29,6 +29,7 @@ use {
 
 ```lua
 require("logdebug").setup({
-  keymap = "<leader>lg" -- default is <leader>cl
+  keymap_below = "<leader>lg", -- default is <leader>wl
+  -- keymap_above = "<leader>lh" -- map to insert above cursor
 })
 ```

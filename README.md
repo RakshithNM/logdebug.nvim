@@ -9,7 +9,7 @@ A tiny Neovim plugin to insert `console.log({ word })` for the word under the cu
 {
   "RakshithNM/logdebug.nvim",
   config = function()
-    require("logger").setup()
+    require("logdebug").setup()
   end
 }
 ```
@@ -18,9 +18,9 @@ A tiny Neovim plugin to insert `console.log({ word })` for the word under the cu
 
 ```lua
 use {
-  "yourgithub/console-log.nvim",
+  "RakshithNM/logdebug.nvim",
   config = function()
-    require("console_log").setup()
+    require("logdebug").setup()
   end
 }
 ```
@@ -28,8 +28,7 @@ use {
 ### Configuration(optional)
 
 ```lua
-require("console_log").setup({
+require("logdebug").setup({
   keymap = "<leader>lg" -- default is <leader>cl
 })
-```
 ```

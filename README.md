@@ -31,5 +31,6 @@ use {
 require("logdebug").setup({
   keymap_below = "<leader>lg", -- default is <leader>wl
   -- keymap_above = "<leader>lh" -- map to insert above cursor
+  -- keymap_remove = "<leader>ld" -- remove all console logs
 })
 ```

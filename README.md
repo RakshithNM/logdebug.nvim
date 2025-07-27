@@ -32,7 +32,7 @@ use {
 require("logdebug").setup({
   keymap_below = "<leader>wlb", -- word log below
   keymap_above = "<leader>wla" -- word log above
-  keymap_remove = "<leader>dl" -- delete all console logs
+  keymap_remove = "<leader>dl" -- delete all console logs, including commented ones
   keymap_comment = "<leader>kl" -- Komment out all console logs
   keymap_toggle = "<leader>tll", -- toggle log level
   filetypes = { "javascript", "typescript", "javascriptreact", "typescriptreact", "vue" } -- optional filetype filter

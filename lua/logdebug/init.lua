@@ -9,7 +9,7 @@ end
 
 function M.setup(opts)
 	opts = opts or {}
-	local keymap = opts.keymap or "<leader>wl"
+	local keymap = opts.keymap or "<leader>cl"
 
 	vim.keymap.set("n", keymap, M.log_word_under_cursor, { desc = "Console log word under cursor" })
 end

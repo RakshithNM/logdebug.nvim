@@ -61,26 +61,45 @@ function M.toggle_verbosity()
 end
 
 function M.setup(opts)
-	opts = opts or {}
-	local keymap_below = opts.keymap_below or "<leader>wla"
-	local keymap_above = opts.keymap_above or "<leader>wlb"
-	local keymap_remove = opts.keymap_remove or "<leader>dl"
-	local keymap_comment = opts.keymap_comment or "<leader>kl"
-	local keymap_toggle = opts.keymap_toggle or "<leader>tll"
+        opts = opts or {}
+        local keymap_below = opts.keymap_below or "<leader>wla"
+        local keymap_above = opts.keymap_above or "<leader>wlb"
+        local keymap_remove = opts.keymap_remove or "<leader>dl"
+        local keymap_comment = opts.keymap_comment or "<leader>kl"
+        local keymap_toggle = opts.keymap_toggle or "<leader>tll"
+        local filetypes = opts.filetypes
 
-	vim.keymap.set("n", keymap_below, M.log_word_below_cursor, { desc = "Console log word below cursor" })
-	if keymap_above then
-		vim.keymap.set("n", keymap_above, M.log_word_above_cursor, { desc = "Console log word above cursor" })
-	end
-	if keymap_remove then
-		vim.keymap.set("n", keymap_remove, M.remove_all_logs, { desc = "Remove console logs" })
-	end
-	if keymap_comment then
-		vim.keymap.set("n", keymap_comment, M.comment_all_logs, { desc = "Comment out console logs" })
-	end
-	if keymap_toggle then
-		vim.keymap.set("n", keymap_toggle, M.toggle_verbosity, { desc = "Toggle log level" })
-	end
+        local function set_maps(buf)
+                vim.keymap.set("n", keymap_below, M.log_word_below_cursor,
+                        { desc = "Console log word below cursor", buffer = buf })
+                if keymap_above then
+                        vim.keymap.set("n", keymap_above, M.log_word_above_cursor,
+                                { desc = "Console log word above cursor", buffer = buf })
+                end
+                if keymap_remove then
+                        vim.keymap.set("n", keymap_remove, M.remove_all_logs,
+                                { desc = "Remove console logs", buffer = buf })
+                end
+                if keymap_comment then
+                        vim.keymap.set("n", keymap_comment, M.comment_all_logs,
+                                { desc = "Comment out console logs", buffer = buf })
+                end
+                if keymap_toggle then
+                        vim.keymap.set("n", keymap_toggle, M.toggle_verbosity,
+                                { desc = "Toggle log level", buffer = buf })
+                end
+        end
+
+        if filetypes then
+                vim.api.nvim_create_autocmd("FileType", {
+                        pattern = filetypes,
+                        callback = function(args)
+                                set_maps(args.buf)
+                        end,
+                })
+        else
+                set_maps(nil)
+        end
 end
 
 return M

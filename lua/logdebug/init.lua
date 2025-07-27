@@ -14,7 +14,7 @@ end
 
 local function is_commented_console_line(line)
 	for _, level in ipairs(M.log_levels) do
-		if line:match("^%s*//%s*console%." .. level .. "%(") then
+		if line:match("^%s*//console%." .. level .. "%(") then
 			return true
 		end
 	end

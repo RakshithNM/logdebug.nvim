@@ -4,12 +4,21 @@ M.log_levels = { "log", "info", "warn", "error" }
 M.current_level_index = 1
 
 local function is_console_line(line)
-	for _, level in ipairs(M.log_levels) do
-		if line:match("^%s*console%." .. level .. "%(") then
-			return true
-		end
-	end
-	return false
+        for _, level in ipairs(M.log_levels) do
+                if line:match("^%s*console%." .. level .. "%(") then
+                        return true
+                end
+        end
+        return false
+end
+
+local function is_commented_console_line(line)
+        for _, level in ipairs(M.log_levels) do
+                if line:match("^%s*//%s*console%." .. level .. "%(") then
+                        return true
+                end
+        end
+        return false
 end
 
 local function insert_log_line(below)
@@ -33,13 +42,13 @@ function M.log_word_above_cursor()
 end
 
 function M.remove_all_logs()
-	local bufnr = vim.api.nvim_get_current_buf()
-	for i = vim.api.nvim_buf_line_count(bufnr), 1, -1 do
-		local line = vim.api.nvim_buf_get_lines(bufnr, i - 1, i, false)[1]
-		if is_console_line(line) then
-			vim.api.nvim_buf_set_lines(bufnr, i - 1, i, false, {})
-		end
-	end
+        local bufnr = vim.api.nvim_get_current_buf()
+        for i = vim.api.nvim_buf_line_count(bufnr), 1, -1 do
+                local line = vim.api.nvim_buf_get_lines(bufnr, i - 1, i, false)[1]
+                if is_console_line(line) or is_commented_console_line(line) then
+                        vim.api.nvim_buf_set_lines(bufnr, i - 1, i, false, {})
+                end
+        end
 end
 
 function M.comment_all_logs()

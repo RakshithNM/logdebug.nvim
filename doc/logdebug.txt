@@ -1,0 +1,39 @@
+*logdebug.txt*  Logdebug.nvim plugin documentation
+
+LOGDEBUG.NVIM                                                  *logdebug*
+
+Logdebug.nvim is a tiny Neovim plugin that helps insert `console` statements for the word under the cursor. It also provides helpers to clean up or comment out these statements and to toggle their verbosity level.
+
+==============================================================================
+MAPPINGS                                                    *logdebug-mappings*
+
+The plugin sets up mappings when `require("logdebug").setup()` is called.
+
+Default mappings:
+    <leader>wla    Insert console log below the current line
+    <leader>wlb    Insert console log above the current line
+    <leader>dl     Remove all console logs (including commented ones)
+    <leader>kl     Comment out all console logs
+    <leader>tll    Toggle log level (log/info/warn/error)
+
+==============================================================================
+SETUP                                                          *logdebug-setup*
+
+`require("logdebug").setup({opts})` takes the following optional keys:
+    keymap_below   Mapping to insert log below     (default "<leader>wla")
+    keymap_above   Mapping to insert log above     (default "<leader>wlb")
+    keymap_remove  Mapping to remove logs          (default "<leader>dl")
+    keymap_comment Mapping to comment logs         (default "<leader>kl")
+    keymap_toggle  Mapping to toggle log level     (default "<leader>tll")
+    filetypes      List of filetypes to activate the plugin for
+
+When `filetypes` is provided, mappings are only created for buffers whose `'filetype'` matches one in the list. Otherwise they are global.
+
+==============================================================================
+USAGE                                                           *logdebug-usage*
+
+Use the mappings above (or your customised ones) to insert, remove or comment console statements. The log level cycles through `log`, `info`, `warn` and `error` each time the toggle mapping is invoked.
+
+==============================================================================
+
+vim:tw=78:ft=help:norl

@@ -42,11 +42,11 @@ function M.log_word_above_cursor()
 end
 
 function M.log_visual_selection()
-	local start_pos = vim.fn.getpos("'<")
-	local end_pos = vim.fn.getpos("'>")
+	local start_pos = vim.api.nvim_buf_get_mark(0, "<")
+	local end_pos = vim.api.nvim_buf_get_mark(0, ">")
 	vim.cmd("normal! <Esc>")
 
-	local lines = vim.fn.getline(start_pos[2], end_pos[2])
+	local lines = vim.api.nvim_buf_get_lines(0, start_pos[1] - 1, end_pos[1], false)
 	if #lines == 0 then
 		return
 	end

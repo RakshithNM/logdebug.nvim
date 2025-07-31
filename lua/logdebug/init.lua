@@ -41,25 +41,6 @@ function M.log_word_above_cursor()
 	insert_log_line(false)
 end
 
-function M.log_visual_selection()
-	local start_pos = vim.fn.getpos("'<")
-	local end_pos = vim.fn.getpos("'>")
-	vim.cmd("normal! <Esc>")
-
-	local lines = vim.fn.getline(start_pos[2], end_pos[2])
-	if #lines == 0 then
-		return
-	end
-	-- if the visual selection is in one line
-	if type(lines) == "string" then
-		lines = { lines }
-	end
-	lines[#lines] = string.sub(lines[#lines], 1, end_pos[3])
-	lines[1] = string.sub(lines[1], start_pos[3])
-	local text = table.concat(lines, " ")
-	insert_log_line(true, text)
-end
-
 function M.remove_all_logs()
 	local bufnr = vim.api.nvim_get_current_buf()
 	for i = vim.api.nvim_buf_line_count(bufnr), 1, -1 do

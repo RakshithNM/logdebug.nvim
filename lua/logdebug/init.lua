@@ -21,11 +21,11 @@ local function is_commented_console_line(line)
 	return false
 end
 
-local function insert_log_line(below)
-	local word = vim.fn.expand("<cword>")
+local function insert_log_line(below, text)
+	local target = text or vim.fn.expand("<cword>")
 	local line_num = vim.fn.line(".")
 	local level = M.log_levels[M.current_level_index]
-	local log_line = string.format("console.%s({ %s });", level, word)
+	local log_line = string.format("console.%s({ %s });", level, target)
 	if below then
 		vim.fn.append(line_num, log_line)
 	else
@@ -39,6 +39,25 @@ end
 
 function M.log_word_above_cursor()
 	insert_log_line(false)
+end
+
+function M.log_visual_selection()
+	local start_pos = vim.fn.getpos("'<")
+	local end_pos = vim.fn.getpos("'>")
+	vim.cmd("normal! <Esc>")
+
+	local lines = vim.fn.getline(start_pos[2], end_pos[2])
+	if #lines == 0 then
+		return
+	end
+	-- if the visual selection is in one line
+	if type(lines) == "string" then
+		lines = { lines }
+	end
+	lines[#lines] = string.sub(lines[#lines], 1, end_pos[3])
+	lines[1] = string.sub(lines[1], start_pos[3])
+	local text = table.concat(lines, " ")
+	insert_log_line(true, text)
 end
 
 function M.remove_all_logs()
@@ -73,6 +92,7 @@ function M.setup(opts)
 	opts = opts or {}
 	local keymap_below = opts.keymap_below or "<leader>wla"
 	local keymap_above = opts.keymap_above or "<leader>wlb"
+	local keymap_visual = opts.keymap_visual or "<leader>wlv"
 	local keymap_remove = opts.keymap_remove or "<leader>dl"
 	local keymap_comment = opts.keymap_comment or "<leader>kl"
 	local keymap_toggle = opts.keymap_toggle or "<leader>tll"
@@ -91,6 +111,14 @@ function M.setup(opts)
 				keymap_above,
 				M.log_word_above_cursor,
 				{ desc = "Console log word above cursor", buffer = buf }
+			)
+		end
+		if keymap_visual then
+			vim.keymap.set(
+				"v",
+				keymap_visual,
+				M.log_visual_selection,
+				{ desc = "Console log visual selection", buffer = buf }
 			)
 		end
 		if keymap_remove then

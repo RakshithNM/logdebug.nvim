@@ -5,6 +5,35 @@ LOGDEBUG.NVIM                                                  *logdebug*
 Logdebug.nvim is a tiny Neovim plugin that helps insert `console` statements for the word under the cursor. It also provides helpers to clean up or comment out these statements and to toggle their verbosity level.
 
 ==============================================================================
+FUNCTIONS                                                *logdebug-functions*
+
+The plugin provides the following public functions:
+
+log_word_below_cursor()                                    *logdebug-log-below*
+    Insert a console log statement below the current line for the word under
+    the cursor.
+
+log_word_above_cursor()                                    *logdebug-log-above*
+    Insert a console log statement above the current line for the word under
+    the cursor.
+
+remove_all_logs()                                          *logdebug-remove*
+    Remove all console log statements from the current buffer, including
+    commented ones.
+
+comment_all_logs()                                         *logdebug-comment*
+    Comment out all console log statements in the current buffer. The comment
+    style is automatically detected from the buffer's 'commentstring' option.
+
+toggle_verbosity()                                         *logdebug-toggle*
+    Toggle the log level used when inserting new logs. Cycles through `log`,
+    `info`, `warn`, and `error`. The log level is stored per-buffer.
+
+disable()                                                  *logdebug-disable*
+    Disable the plugin and clean up all autocmds and keymaps. Call
+    `require("logdebug").disable()` to disable the plugin.
+
+==============================================================================
 MAPPINGS                                                    *logdebug-mappings*
 
 The plugin sets up mappings when `require("logdebug").setup()` is called.
@@ -16,23 +45,67 @@ Default mappings:
     <leader>kl     Comment out all console logs
     <leader>tll    Toggle log level (log/info/warn/error)
 
+All mappings are silent by default to avoid command line pollution.
+
 ==============================================================================
+CONFIGURATION                                          *logdebug-config*
+
 SETUP                                                          *logdebug-setup*
 
 `require("logdebug").setup({opts})` takes the following optional keys:
     keymap_below   Mapping to insert log below     (default "<leader>wla")
     keymap_above   Mapping to insert log above     (default "<leader>wlb")
     keymap_remove  Mapping to remove logs          (default "<leader>dl")
-    keymap_comment Mapping to comment logs         (default "<leader>kl")
+    keymap_comment Mapping to comment logs          (default "<leader>kl")
     keymap_toggle  Mapping to toggle log level     (default "<leader>tll")
     filetypes      List of filetypes to activate the plugin for
 
-When `filetypes` is provided, mappings are only created for buffers whose `'filetype'` matches one in the list. Otherwise they are global.
+When `filetypes` is provided, mappings are only created for buffers whose
+`'filetype'` matches one in the list. Otherwise they are global.
+
+All keymap options accept `nil` to disable that particular mapping.
+
+Example: >
+    require("logdebug").setup({
+      keymap_below = "<leader>wla",
+      keymap_above = "<leader>wlb",
+      keymap_remove = "<leader>dl",
+      keymap_comment = "<leader>kl",
+      keymap_toggle = "<leader>tll",
+      filetypes = { "javascript", "typescript" }
+    })
+<
+
+COMMENT STYLE DETECTION                          *logdebug-comment-style*
+
+The plugin automatically detects the comment style for the current buffer using
+the `'commentstring'` option. This means it will use:
+    - `//` for JavaScript/TypeScript
+    - `#` for Python
+    - `--` for Lua
+    - And other comment styles based on the filetype
+
+If `'commentstring'` is not set, it defaults to `//`.
 
 ==============================================================================
 USAGE                                                           *logdebug-usage*
 
-Use the mappings above (or your customised ones) to insert, remove or comment console statements. The log level cycles through `log`, `info`, `warn` and `error` each time the toggle mapping is invoked.
+Use the mappings above (or your customised ones) to insert, remove or comment
+console statements. The log level cycles through `log`, `info`, `warn` and
+`error` each time the toggle mapping is invoked.
+
+The log level state is stored per-buffer, so each buffer can have its own
+preferred log level.
+
+FEATURES                                                      *logdebug-features*
+
+- Indentation preservation: Log statements preserve the indentation of the
+  current line
+- Undo support: All operations create proper undo points
+- Error handling: Graceful error handling with user-friendly notifications
+- Buffer-local state: Each buffer maintains its own log level preference
+- Comment style detection: Automatically uses the correct comment style for
+  the filetype
 
 ==============================================================================
 

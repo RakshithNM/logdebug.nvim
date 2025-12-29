@@ -59,6 +59,7 @@ SETUP                                                          *logdebug-setup*
     keymap_comment Mapping to comment logs          (default "<leader>kl")
     keymap_toggle  Mapping to toggle log level     (default "<leader>tll")
     filetypes      List of filetypes to activate the plugin for
+    languages      Table of per-filetype language configs
 
 When `filetypes` is provided, mappings are only created for buffers whose
 `'filetype'` matches one in the list. Otherwise they are global.
@@ -72,7 +73,25 @@ Example: >
       keymap_remove = "<leader>dl",
       keymap_comment = "<leader>kl",
       keymap_toggle = "<leader>tll",
-      filetypes = { "javascript", "typescript" }
+      filetypes = { "javascript", "typescript" },
+      languages = {
+        ruby = {
+          build_log = function(indent, _level, expr)
+            return string.format("%sputs(%s.inspect)", indent, expr)
+          end,
+          is_log_line = function(line)
+            return line:match("^%s*puts%(") ~= nil
+          end,
+        },
+        python = {
+          build_log = function(indent, _level, expr)
+            return string.format("%sprint(%s)", indent, expr)
+          end,
+          is_log_line = function(line)
+            return line:match("^%s*print%(") ~= nil
+          end,
+        },
+      }
     })
 <
 

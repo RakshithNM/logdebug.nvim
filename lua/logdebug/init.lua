@@ -3,6 +3,31 @@ local M = {}
 -- Configuration defaults
 M.log_levels = { "log", "info", "warn", "error" }
 
+-- Per-language logging configuration
+-- Users can extend/override this via `setup({ languages = { ... } })`.
+local language_configs = {
+	-- Default: JS/TS-style console logs
+	default = {
+		build_log = function(indent, level, expr)
+			return string.format("%sconsole.%s({ %s });", indent, level, expr)
+		end,
+		is_log_line = function(line, log_levels)
+			for _, level in ipairs(log_levels) do
+				if line:match("^%s*console%." .. level .. "%(") then
+					return true
+				end
+			end
+			return false
+		end,
+	},
+}
+
+local function get_lang_config(bufnr)
+	bufnr = bufnr or vim.api.nvim_get_current_buf()
+	local ft = vim.bo[bufnr].filetype
+	return (ft and language_configs[ft]) or language_configs.default
+end
+
 -- State management: buffer-local state for log level indices
 local state = {}
 local augroup_id = nil
@@ -41,33 +66,30 @@ local function get_comment_prefix(bufnr)
 	return "//"
 end
 
--- Private helper: Check if line is a console log line
-local function is_console_line(line)
+-- Private helper: Check if line is a log line for the current language
+local function is_console_line(line, bufnr)
 	if not line or type(line) ~= "string" then
 		return false
 	end
-	for _, level in ipairs(M.log_levels) do
-		if line:match("^%s*console%." .. level .. "%(") then
-			return true
-		end
-	end
-	return false
+	local cfg = get_lang_config(bufnr)
+	return cfg.is_log_line(line, M.log_levels) == true
 end
 
--- Private helper: Check if line is a commented console log line
-local function is_commented_console_line(line, comment_prefix)
+-- Private helper: Check if line is a commented log line
+local function is_commented_console_line(line, comment_prefix, bufnr)
 	if not line or type(line) ~= "string" then
 		return false
 	end
 	comment_prefix = comment_prefix or "//"
 	-- Escape special regex characters in comment prefix
 	local escaped_prefix = comment_prefix:gsub("[%(%)%.%+%-%*%?%[%]%^%$%%]", "%%%1")
-	for _, level in ipairs(M.log_levels) do
-		if line:match("^%s*" .. escaped_prefix .. "console%." .. level .. "%(") then
-			return true
-		end
+	-- Strip indent + comment prefix, then delegate to language-specific matcher
+	local uncommented = line:match("^%s*" .. escaped_prefix .. "(.*)")
+	if not uncommented then
+		return false
 	end
-	return false
+	local cfg = get_lang_config(bufnr)
+	return cfg.is_log_line(uncommented, M.log_levels) == true
 end
 
 -- Private helper: Get indentation from a line
@@ -125,7 +147,8 @@ local function insert_log_line(below)
 	local indent = get_indent(current_line_content)
 	local level_index = get_level_index(bufnr)
 	local level = M.log_levels[level_index]
-	local log_line = string.format("%sconsole.%s({ %s });", indent, level, word)
+	local lang_cfg = get_lang_config(bufnr)
+	local log_line = lang_cfg.build_log(indent, level, word)
 
 	-- Use nvim_buf_set_lines for proper undo support
 	local insert_line = below and line_num or (line_num - 1)
@@ -170,7 +193,7 @@ function M.remove_all_logs()
 		local success, lines = pcall(vim.api.nvim_buf_get_lines, bufnr, i - 1, i, false)
 		if success and lines and lines[1] then
 			local line = lines[1]
-			if is_console_line(line) or is_commented_console_line(line, comment_prefix) then
+			if is_console_line(line, bufnr) or is_commented_console_line(line, comment_prefix, bufnr) then
 				local remove_success = pcall(vim.api.nvim_buf_set_lines, bufnr, i - 1, i, false, {})
 				if remove_success then
 					removed_count = removed_count + 1
@@ -201,7 +224,7 @@ function M.comment_all_logs()
 		local success, lines = pcall(vim.api.nvim_buf_get_lines, bufnr, i - 1, i, false)
 		if success and lines and lines[1] then
 			local line = lines[1]
-			if is_console_line(line) then
+			if is_console_line(line, bufnr) then
 				local indent = get_indent(line)
 				local uncommented = line:sub(#indent + 1)
 				local commented_line = indent .. comment_prefix .. uncommented
@@ -278,6 +301,7 @@ function M.setup(opts)
 	local keymap_comment = opts.keymap_comment or "<leader>kl"
 	local keymap_toggle = opts.keymap_toggle or "<leader>tll"
 	local filetypes = opts.filetypes
+	local languages = opts.languages
 
 	-- Validate keymaps
 	local valid, err = validate_keymap(keymap_below)
@@ -315,6 +339,15 @@ function M.setup(opts)
 	if not valid then
 		vim.notify("logdebug: Invalid filetypes: " .. err, vim.log.levels.ERROR)
 		return
+	end
+
+	-- Merge user-provided language configs
+	if languages and type(languages) == "table" then
+		for ft, cfg in pairs(languages) do
+			if type(ft) == "string" and type(cfg) == "table" then
+				language_configs[ft] = cfg
+			end
+		end
 	end
 
 	-- Clean up existing autocmds if setup is called again

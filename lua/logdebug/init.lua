@@ -424,8 +424,8 @@ function M.setup(opts)
 	end
 
 	-- Input validation
-	local keymap_below = opts.keymap_below or "<leader>wla"
-	local keymap_above = opts.keymap_above or "<leader>wlb"
+	local keymap_below = opts.keymap_below or "<leader>wlb"
+	local keymap_above = opts.keymap_above or "<leader>wla"
 	local keymap_remove = opts.keymap_remove or "<leader>dl"
 	local keymap_comment = opts.keymap_comment or "<leader>kl"
 	local keymap_toggle = opts.keymap_toggle or "<leader>tll"

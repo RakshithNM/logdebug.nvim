@@ -10,12 +10,16 @@ FUNCTIONS                                                *logdebug-functions*
 The plugin provides the following public functions:
 
 log_word_below_cursor()                                    *logdebug-log-below*
-    Insert a console log statement below the current line for the word under
-    the cursor.
+    Insert a log statement below the current line for the word under the cursor
+    or visual selection.
 
 log_word_above_cursor()                                    *logdebug-log-above*
-    Insert a console log statement above the current line for the word under
-    the cursor.
+    Insert a log statement above the current line for the word under the cursor
+    or visual selection.
+
+log_selection()                                            *logdebug-log-selection*
+    Insert a log statement for the current visual selection. Works in visual
+    mode and automatically exits visual mode after logging.
 
 remove_all_logs()                                          *logdebug-remove*
     Remove all console log statements from the current buffer, including
@@ -26,8 +30,13 @@ comment_all_logs()                                         *logdebug-comment*
     style is automatically detected from the buffer's 'commentstring' option.
 
 toggle_verbosity()                                         *logdebug-toggle*
-    Toggle the log level used when inserting new logs. Cycles through `log`,
-    `info`, `warn`, and `error`. The log level is stored per-buffer.
+    Toggle the log level used when inserting new logs. Cycles through the
+    configured log levels (default: `log`, `info`, `warn`, `error`). The log
+    level is stored per-buffer.
+
+find_all_logs()                                            *logdebug-find*
+    Find all log statements in the current buffer and populate the quickfix
+    list. Opens the quickfix window automatically.
 
 disable()                                                  *logdebug-disable*
     Disable the plugin and clean up all autocmds and keymaps. Call
@@ -39,11 +48,15 @@ MAPPINGS                                                    *logdebug-mappings*
 The plugin sets up mappings when `require("logdebug").setup()` is called.
 
 Default mappings:
-    <leader>wla    Insert console log below the current line
-    <leader>wlb    Insert console log above the current line
-    <leader>dl     Remove all console logs (including commented ones)
-    <leader>kl     Comment out all console logs
-    <leader>tll    Toggle log level (log/info/warn/error)
+    <leader>wla    Insert log below the current line (word or selection)
+    <leader>wlb    Insert log above the current line (word or selection)
+    <leader>dl     Remove all logs (including commented ones)
+    <leader>kl     Comment out all logs
+    <leader>tll    Toggle log level
+
+Optional mappings (configure via setup):
+    keymap_visual  Log visual selection (visual mode)
+    keymap_find    Find all logs (populate quickfix)
 
 All mappings are silent by default to avoid command line pollution.
 
@@ -55,11 +68,16 @@ SETUP                                                          *logdebug-setup*
 `require("logdebug").setup({opts})` takes the following optional keys:
     keymap_below   Mapping to insert log below     (default "<leader>wla")
     keymap_above   Mapping to insert log above     (default "<leader>wlb")
+    keymap_visual  Mapping to log visual selection (default: nil, visual mode)
     keymap_remove  Mapping to remove logs          (default "<leader>dl")
     keymap_comment Mapping to comment logs          (default "<leader>kl")
     keymap_toggle  Mapping to toggle log level     (default "<leader>tll")
+    keymap_find    Mapping to find all logs        (default: nil)
     filetypes      List of filetypes to activate the plugin for
     languages      Table of per-filetype language configs
+    log_levels     Custom log levels to cycle through (default: {"log", "info", "warn", "error"})
+    config         Configuration table:
+                     use_labels  Enable labeled logs (e.g., "var: {var}") (default: false)
 
 When `filetypes` is provided, mappings are only created for buffers whose
 `'filetype'` matches one in the list. Otherwise they are global.
@@ -70,10 +88,16 @@ Example: >
     require("logdebug").setup({
       keymap_below = "<leader>wla",
       keymap_above = "<leader>wlb",
+      keymap_visual = "<leader>lv",  -- Log visual selection
       keymap_remove = "<leader>dl",
       keymap_comment = "<leader>kl",
       keymap_toggle = "<leader>tll",
+      keymap_find = "<leader>fl",    -- Find all logs
       filetypes = { "javascript", "typescript" },
+      log_levels = { "log", "info", "warn", "error", "debug" },
+      config = {
+        use_labels = true,  -- Enable "var: {var}" format
+      },
       languages = {
         ruby = {
           build_log = function(indent, _level, expr)
@@ -110,21 +134,43 @@ If `'commentstring'` is not set, it defaults to `//`.
 USAGE                                                           *logdebug-usage*
 
 Use the mappings above (or your customised ones) to insert, remove or comment
-console statements. The log level cycles through `log`, `info`, `warn` and
-`error` each time the toggle mapping is invoked.
+log statements. The log level cycles through the configured levels (default:
+`log`, `info`, `warn`, `error`) each time the toggle mapping is invoked.
 
 The log level state is stored per-buffer, so each buffer can have its own
 preferred log level.
 
+VISUAL SELECTION SUPPORT                                    *logdebug-visual*
+
+In visual mode, you can select text and use the log mappings to log the
+selected expression. The plugin automatically detects visual mode and logs the
+selection instead of just the word under the cursor. You can also configure a
+dedicated visual mode mapping via `keymap_visual`.
+
+LABELED LOGS                                                *logdebug-labels*
+
+When `config.use_labels` is enabled, simple variable names will be logged with
+a label format. For example, logging `myVar` will produce:
+    console.log("myVar:", myVar);
+
+This only applies to simple identifiers (single words), not complex
+expressions.
+
 FEATURES                                                      *logdebug-features*
 
+- Visual selection support: Log entire expressions, not just single words
 - Indentation preservation: Log statements preserve the indentation of the
   current line
-- Undo support: All operations create proper undo points
+- Undo support: All operations create proper undo points with grouping for
+  batch operations
 - Error handling: Graceful error handling with user-friendly notifications
 - Buffer-local state: Each buffer maintains its own log level preference
 - Comment style detection: Automatically uses the correct comment style for
   the filetype
+- Multi-language support: Configure different log formats per filetype
+- Configurable log levels: Customize which log levels to cycle through
+- Log navigation: Find all logs and populate quickfix list
+- Labeled logs: Optional "var: {var}" format for better readability
 
 ==============================================================================
 

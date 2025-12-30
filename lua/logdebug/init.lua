@@ -2,6 +2,11 @@ local M = {}
 
 -- Configuration defaults
 M.log_levels = { "log", "info", "warn", "error" }
+-- Default config options
+local default_config = {
+	log_levels = { "log", "info", "warn", "error" },
+	use_labels = false, -- Whether to include labels like "var: {var}"
+}
 
 -- Per-language logging configuration
 -- Users can extend/override this via `setup({ languages = { ... } })`.
@@ -32,6 +37,7 @@ end
 local state = {}
 local augroup_id = nil
 local autocmd_id = nil
+local config = {} -- Plugin configuration
 
 -- Helper function to get buffer-local log level index
 local function get_level_index(bufnr)
@@ -72,7 +78,8 @@ local function is_console_line(line, bufnr)
 		return false
 	end
 	local cfg = get_lang_config(bufnr)
-	return cfg.is_log_line(line, M.log_levels) == true
+	local log_levels = config.log_levels or M.log_levels
+	return cfg.is_log_line(line, log_levels) == true
 end
 
 -- Private helper: Check if line is a commented log line
@@ -89,7 +96,8 @@ local function is_commented_console_line(line, comment_prefix, bufnr)
 		return false
 	end
 	local cfg = get_lang_config(bufnr)
-	return cfg.is_log_line(uncommented, M.log_levels) == true
+	local log_levels = config.log_levels or M.log_levels
+	return cfg.is_log_line(uncommented, log_levels) == true
 end
 
 -- Private helper: Get indentation from a line
@@ -122,18 +130,58 @@ local function validate_buffer_and_line(bufnr)
 	return bufnr, current_line, nil
 end
 
+-- Private helper: Get selected text or word under cursor
+local function get_selected_text()
+	local mode = vim.fn.mode()
+	if mode == "v" or mode == "V" or mode == "\22" then
+		-- Visual mode: get selected text
+		local start_pos = vim.fn.getpos("'<")
+		local end_pos = vim.fn.getpos("'>")
+		local start_line = start_pos[2] - 1
+		local end_line = end_pos[2] - 1
+		local start_col = start_pos[3] - 1
+		local end_col = end_pos[3]
+
+		local lines = vim.api.nvim_buf_get_lines(0, start_line, end_line + 1, false)
+		if not lines or #lines == 0 then
+			return nil
+		end
+
+		if #lines == 1 then
+			-- Single line selection
+			local line = lines[1]
+			return line:sub(start_col + 1, end_col)
+		else
+			-- Multi-line selection
+			local first_line = lines[1]:sub(start_col + 1)
+			local last_line = lines[#lines]:sub(1, end_col)
+			local middle_lines = {}
+			for i = 2, #lines - 1 do
+				table.insert(middle_lines, lines[i])
+			end
+			return table.concat({ first_line, table.unpack(middle_lines), last_line }, "\n")
+		end
+	else
+		-- Normal mode: get word under cursor
+		return vim.fn.expand("<cword>")
+	end
+end
+
 -- Private helper: Insert log line with proper error handling and undo support
-local function insert_log_line(below)
+local function insert_log_line(below, expr)
 	local bufnr, line_num, err = validate_buffer_and_line()
 	if err then
 		vim.notify("logdebug: " .. err, vim.log.levels.WARN)
 		return
 	end
 
-	-- Get word under cursor
-	local word = vim.fn.expand("<cword>")
-	if not word or word == "" then
-		vim.notify("logdebug: No word under cursor", vim.log.levels.WARN)
+	-- Get expression to log (provided or from selection/word)
+	local expression = expr
+	if not expression then
+		expression = get_selected_text()
+	end
+	if not expression or expression == "" then
+		vim.notify("logdebug: No expression to log", vim.log.levels.WARN)
 		return
 	end
 
@@ -146,9 +194,18 @@ local function insert_log_line(below)
 
 	local indent = get_indent(current_line_content)
 	local level_index = get_level_index(bufnr)
-	local level = M.log_levels[level_index]
+	local log_levels = config.log_levels or M.log_levels
+	local level = log_levels[level_index]
 	local lang_cfg = get_lang_config(bufnr)
-	local log_line = lang_cfg.build_log(indent, level, word)
+
+	-- Format expression with label if enabled
+	local expr_to_log = expression
+	if config.use_labels and expression:match("^[%w_][%w_]*$") then
+		-- Only add label for simple identifiers
+		expr_to_log = string.format('"%s:", %s', expression, expression)
+	end
+
+	local log_line = lang_cfg.build_log(indent, level, expr_to_log)
 
 	-- Use nvim_buf_set_lines for proper undo support
 	local insert_line = below and line_num or (line_num - 1)
@@ -160,7 +217,7 @@ local function insert_log_line(below)
 	end
 end
 
--- Public API: Log word below cursor
+-- Public API: Log word/selection below cursor
 function M.log_word_below_cursor()
 	local success, err = pcall(insert_log_line, true)
 	if not success then
@@ -168,11 +225,29 @@ function M.log_word_below_cursor()
 	end
 end
 
--- Public API: Log word above cursor
+-- Public API: Log word/selection above cursor
 function M.log_word_above_cursor()
 	local success, err = pcall(insert_log_line, false)
 	if not success then
 		vim.notify("logdebug: Error inserting log above: " .. tostring(err), vim.log.levels.ERROR)
+	end
+end
+
+-- Public API: Log visual selection (for visual mode mappings)
+function M.log_selection()
+	local mode = vim.fn.mode()
+	if mode ~= "v" and mode ~= "V" and mode ~= "\22" then
+		vim.notify("logdebug: Not in visual mode", vim.log.levels.WARN)
+		return
+	end
+	-- Get selection before exiting visual mode
+	local expr = get_selected_text()
+	vim.cmd("normal! " .. vim.api.nvim_replace_termcodes("<Esc>", true, false, true))
+	if expr then
+		local success, err = pcall(insert_log_line, true, expr)
+		if not success then
+			vim.notify("logdebug: Error inserting log: " .. tostring(err), vim.log.levels.ERROR)
+		end
 	end
 end
 
@@ -187,6 +262,9 @@ function M.remove_all_logs()
 	local comment_prefix = get_comment_prefix(bufnr)
 	local line_count = vim.api.nvim_buf_line_count(bufnr)
 	local removed_count = 0
+
+	-- Group operations for undo (may fail if no undo history, that's ok)
+	pcall(vim.cmd, "undojoin")
 
 	-- Iterate backwards to avoid index shifting issues
 	for i = line_count, 1, -1 do
@@ -219,6 +297,9 @@ function M.comment_all_logs()
 	local line_count = vim.api.nvim_buf_line_count(bufnr)
 	local commented_count = 0
 
+	-- Group operations for undo (may fail if no undo history, that's ok)
+	pcall(vim.cmd, "undojoin")
+
 	-- Iterate backwards to avoid index shifting issues
 	for i = line_count, 1, -1 do
 		local success, lines = pcall(vim.api.nvim_buf_get_lines, bufnr, i - 1, i, false)
@@ -245,10 +326,47 @@ end
 function M.toggle_verbosity()
 	local bufnr = vim.api.nvim_get_current_buf()
 	local current_index = get_level_index(bufnr)
-	local new_index = (current_index % #M.log_levels) + 1
+	local log_levels = config.log_levels or M.log_levels
+	local new_index = (current_index % #log_levels) + 1
 	set_level_index(bufnr, new_index)
-	local level = M.log_levels[new_index]
-	vim.notify("logdebug: using console." .. level, vim.log.levels.INFO)
+	local level = log_levels[new_index]
+	vim.notify("logdebug: using level " .. level, vim.log.levels.INFO)
+end
+
+-- Public API: Find all log statements and populate quickfix
+function M.find_all_logs()
+	local bufnr, _, err = validate_buffer_and_line()
+	if err then
+		vim.notify("logdebug: " .. err, vim.log.levels.WARN)
+		return
+	end
+
+	local comment_prefix = get_comment_prefix(bufnr)
+	local line_count = vim.api.nvim_buf_line_count(bufnr)
+	local locations = {}
+
+	for i = 1, line_count do
+		local success, lines = pcall(vim.api.nvim_buf_get_lines, bufnr, i - 1, i, false)
+		if success and lines and lines[1] then
+			local line = lines[1]
+			if is_console_line(line, bufnr) or is_commented_console_line(line, comment_prefix, bufnr) then
+				table.insert(locations, {
+					bufnr = bufnr,
+					lnum = i,
+					col = 1,
+					text = vim.trim(line),
+				})
+			end
+		end
+	end
+
+	if #locations > 0 then
+		vim.fn.setqflist(locations, "r")
+		vim.cmd("copen")
+		vim.notify(string.format("logdebug: Found %d log line(s)", #locations), vim.log.levels.INFO)
+	else
+		vim.notify("logdebug: No log statements found", vim.log.levels.INFO)
+	end
 end
 
 -- Private helper: Validate keymap string
@@ -294,12 +412,25 @@ end
 function M.setup(opts)
 	opts = opts or {}
 
+	-- Merge configuration
+	config = vim.tbl_deep_extend("force", default_config, config or {}, opts.config or {})
+
+	-- Update log levels if provided
+	if opts.log_levels and type(opts.log_levels) == "table" and #opts.log_levels > 0 then
+		M.log_levels = opts.log_levels
+		config.log_levels = opts.log_levels
+	else
+		config.log_levels = config.log_levels or M.log_levels
+	end
+
 	-- Input validation
 	local keymap_below = opts.keymap_below or "<leader>wla"
 	local keymap_above = opts.keymap_above or "<leader>wlb"
 	local keymap_remove = opts.keymap_remove or "<leader>dl"
 	local keymap_comment = opts.keymap_comment or "<leader>kl"
 	local keymap_toggle = opts.keymap_toggle or "<leader>tll"
+	local keymap_find = opts.keymap_find or nil
+	local keymap_visual = opts.keymap_visual or nil
 	local filetypes = opts.filetypes
 	local languages = opts.languages
 
@@ -360,28 +491,35 @@ function M.setup(opts)
 	local function set_maps(buf)
 		if keymap_below then
 			vim.keymap.set("n", keymap_below, M.log_word_below_cursor, {
-				desc = "Console log word below cursor",
+				desc = "Log word/selection below cursor",
 				buffer = buf,
 				silent = true,
 			})
 		end
 		if keymap_above then
 			vim.keymap.set("n", keymap_above, M.log_word_above_cursor, {
-				desc = "Console log word above cursor",
+				desc = "Log word/selection above cursor",
+				buffer = buf,
+				silent = true,
+			})
+		end
+		if keymap_visual then
+			vim.keymap.set("v", keymap_visual, M.log_selection, {
+				desc = "Log visual selection",
 				buffer = buf,
 				silent = true,
 			})
 		end
 		if keymap_remove then
 			vim.keymap.set("n", keymap_remove, M.remove_all_logs, {
-				desc = "Remove console logs",
+				desc = "Remove all logs",
 				buffer = buf,
 				silent = true,
 			})
 		end
 		if keymap_comment then
 			vim.keymap.set("n", keymap_comment, M.comment_all_logs, {
-				desc = "Comment out console logs",
+				desc = "Comment out all logs",
 				buffer = buf,
 				silent = true,
 			})
@@ -389,6 +527,13 @@ function M.setup(opts)
 		if keymap_toggle then
 			vim.keymap.set("n", keymap_toggle, M.toggle_verbosity, {
 				desc = "Toggle log level",
+				buffer = buf,
+				silent = true,
+			})
+		end
+		if keymap_find then
+			vim.keymap.set("n", keymap_find, M.find_all_logs, {
+				desc = "Find all logs (quickfix)",
 				buffer = buf,
 				silent = true,
 			})

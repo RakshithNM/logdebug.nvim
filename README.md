@@ -34,61 +34,71 @@ use {
 }
 ```
 
+### VIM pack
+vim.pack.add({
+    ....
+  { src = "https://github.com/RakshithNM/logdebug.nvim", opt = true },
+    ....
+})
+Then run `:lua vim.pack.update()` and `:write`
+
 ## ⚙️ Configuration (optional)
 ```lua
-require("logdebug").setup {
-  keymap_below = "<leader>wlb", -- log word below cursor
-  keymap_above = "<leader>wla", -- log word above cursor
-  keymap_remove = "<leader>dl", -- delete all console logs (commented ones too)
-  keymap_comment = "<leader>kl", -- comment out all console logs
-  keymap_toggle = "<leader>tll", -- toggle log level
-  filetypes = {
-    "javascript",
-    "typescript",
-    "javascriptreact",
-    "typescriptreact",
-    "vue",
-    "go",
-    "lua",
-    "ruby",
-    "python",
-  },
-  languages = {
-    go = {
-      build_log = function(indent, _level, expr)
-        return string.format('%slog.Printf("%%+v", %s)', indent, expr)
-      end,
-      is_log_line = function(line, _levels)
-        return line:match("^%s*log%.Printf%(") ~= nil
-      end,
-    },
-    lua = {
-      build_log = function(indent, _level, expr)
-        return string.format("%sprint(vim.inspect(%s))", indent, expr)
-      end,
-      is_log_line = function(line, _levels)
-        return line:match("^%s*print%(") ~= nil
-          or line:match("^%s*vim%.print%(") ~= nil
-      end,
-    },
-    ruby = {
-      build_log = function(indent, _level, expr)
-        return string.format("%sputs(%s.inspect)", indent, expr)
-      end,
-      is_log_line = function(line)
-        return line:match("^%s*puts%(") ~= nil
-      end,
-    },
-    python = {
-      build_log = function(indent, _level, expr)
-        return string.format("%sprint(%s)", indent, expr)
-      end,
-      is_log_line = function(line)
-        return line:match("^%s*print%(") ~= nil
-      end,
-    },
-  },
-}
+vim.schedule(function()
+  vim.cmd("packadd logdebug.nvim")
+  local logdebug_ok, logdebug = pcall(require, "logdebug")
+  if logdebug_ok then
+    local logdebug_filetypes = {
+      "javascript", "typescript", "javascriptreact", "typescriptreact",
+      "vue", "go", "lua", "ruby", "python"
+    }
+    logdebug.setup {
+      keymap_below = "<leader>wlb", -- log word below cursor
+      keymap_above = "<leader>wla", -- log word above cursor
+      keymap_remove = "<leader>dl", -- delete all console logs
+      keymap_comment = "<leader>kl", -- comment out all console logs
+      keymap_toggle = "<leader>tll", -- toggle log level
+      keymap_visual = "<leader>lv", -- visual mode log
+      keymap_find = "<leader>fl", -- find logs
+      filetypes = logdebug_filetypes,
+      languages = {
+        go = {
+          build_log = function(indent, _level, expr)
+            return string.format('%slog.Printf("%%+v", %s)', indent, expr)
+          end,
+          is_log_line = function(line, _levels)
+            return line:match("^%s*log%.Printf%(") ~= nil
+          end,
+        },
+        lua = {
+          build_log = function(indent, _level, expr)
+            return string.format("%sprint(vim.inspect(%s))", indent, expr)
+          end,
+          is_log_line = function(line, _levels)
+            return line:match("^%s*print%(") ~= nil
+              or line:match("^%s*vim%.print%(") ~= nil
+          end,
+        },
+        ruby = {
+          build_log = function(indent, _level, expr)
+            return string.format("%sputs(%s.inspect)", indent, expr)
+          end,
+          is_log_line = function(line)
+            return line:match("^%s*puts%(") ~= nil
+          end,
+        },
+        python = {
+          build_log = function(indent, _level, expr)
+            return string.format("%sprint(%s)", indent, expr)
+          end,
+          is_log_line = function(line)
+            return line:match("^%s*print%(") ~= nil
+          end,
+        },
+      },
+    }
+  end
+end)
 ```
 Provide a list of filetypes to `filetypes` to only enable the plugin's keymaps in
 those buffers. When omitted, the keymaps are created globally.

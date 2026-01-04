@@ -35,11 +35,13 @@ use {
 ```
 
 ### VIM pack
+```lua
 vim.pack.add({
     ....
   { src = "https://github.com/RakshithNM/logdebug.nvim", opt = true },
     ....
 })
+```
 Then run `:lua vim.pack.update()` and `:write`
 
 ## ⚙️ Configuration (optional)
